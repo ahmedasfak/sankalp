@@ -1,6 +1,6 @@
 """Shared graph state. Plain dicts and lists only, so the checkpointer can store it and a run can resume in another process."""
 import operator
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Literal, Optional, TypedDict
 
 
 
@@ -12,7 +12,16 @@ class Message(TypedDict, total=False):
     subject: str
     body: str
     analysis : str
-
+    batch_no: Optional[str]
+    invoice_no: Optional[str]
+    Expiry : Optional[str]
+    Qty : Optional[str]
+ 
+class MessageLine(TypedDict, total=False):
+    sku: Optional[str]
+    batch_no: Optional[str]
+    expiry_date: Optional[str]
+    quantity: Optional[str]
 
 class ClaimLine(TypedDict, total=False):
     line_id: str
