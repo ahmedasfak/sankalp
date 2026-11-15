@@ -2,3 +2,8 @@ langchain
 OpenAI
 langgraph
 pandas
+matplotlib
+pyarrow
+dotenv
+langchain-core==1.7.3
+langchain-openai
