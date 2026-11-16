@@ -80,4 +80,4 @@ stockists = {r.stockist_code: dict(name=r.stockist_name, cnf=r.cnf_code, city=r.
 batches = {r.batch_no: dict(sku=r.sku_code, exp=r.exp, mfg=r.mfg) for r in bm.itertuples()}
 skus = {r.sku_code: dict(desc=r.product_description, pack=r.pack, pts=float(r.pts)) for r in sku.itertuples()}
 
-print(claims,sku_df,batch_df,stockist_df,stock,sales)
+#print(claims,sku_df,batch_df,stockist_df,stock,sales)

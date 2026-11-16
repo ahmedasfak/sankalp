@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 
 from llm import llm
 from state import Message
-from rules import triage, claim_precheck_validation
+from rules import triage, claim_precheck_validation,check_claim_window
+from data import claims,sku_df,batch_df,stockist_df,stock,sales
+
 
 
 ###############################################
@@ -31,9 +33,9 @@ class StockistLine(BaseModel):
 class MessageExtraction(BaseModel):
     analysis: Literal[
         "EXPIRED",
-        "NEAR EXPIRY",
-        "SHORT SUPPLY",
-        "BREAKAGE IN TRANSIT",
+        "NEAR_EXPIRY",
+        "SHORT_SUPPLY",
+        "BREAKAGE_IN_TRANSIT",
         "OTHER",
     ] = Field(description="What the stockist is asking for; use other for unrelated requests.")
 
@@ -71,7 +73,7 @@ QTY_RE = re.compile(
 )
 
 
-def read_review(state: Message) -> dict[str, object]:
+def read_review(state: Message) :
     body = state.get("body", "")
     result = reader.invoke(
         {
@@ -85,17 +87,14 @@ def read_review(state: Message) -> dict[str, object]:
     expiry_match = EXP_RE.search(body)
     qty = QTY_RE.search(body)
 
-    return {
-        "analysis": result.analysis,
-        "batch_no": batch_no.group(0) if batch_no else None,
-        "invoice_no": invoice_match.group(0) if invoice_match else None,
-        "Expiry": (
-            expiry_match.group(1) or expiry_match.group(2)
-            if expiry_match
-            else None
-        ),
-        "Qty": qty.group(0) if qty else None,
-    }
+    state["analysis"] = str(result.analysis)
+    state["batch_no"] = batch_no.group(0) if batch_no else None
+    state["invoice_no"] = invoice_match.group(0) if invoice_match else None
+    state["Expiry"] = (
+        expiry_match.group(1) or expiry_match.group(2) if expiry_match else None
+    )
+    state["Qty"] = qty.group(0) if qty else None
+    return state
 
 
 ##claim module.
@@ -104,32 +103,114 @@ def read_review(state: Message) -> dict[str, object]:
 ## ["NEAR EXPIRY","EXPIRY","SHORT SUPPLY","BREAKAGE IN TRANSIT"]
 ##Need to define below nodes
 
+def near_expiry (state:Message)  -> dict[str, str] :
+    batch = state['batch_no']
+    sku_code = state['stockist_code']
+    inv_no = state['invoice_no']
+    qty = state['Qty'] 
+    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
+    sku_cd = result.iloc[0] if not result.empty else None
+    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
+    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    claim_date = state["received_date"]
+    inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
+    invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
+    test = check_claim_window(state["analysis"],claim_date,expiry_date,invoice_date)
+    print("====================output========================")
+    print(test)
+    print("==========================output end ===============")
+
+def expiry (state:Message)  -> dict[str, str] :
+    batch = state['batch_no']
+    sku_code = state['stockist_code']
+    inv_no = state['invoice_no']
+    qty = state['Qty'] 
+    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
+    sku_cd = result.iloc[0] if not result.empty else None
+    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
+    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    claim_date = state["received_date"]
+    inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
+    invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
+    test = check_claim_window(state["analysis"],claim_date,expiry_date,invoice_date)
+    print("====================output========================")
+    print(test)
+    print("==========================output end ===============")
+
+def short_supply (state:Message)  -> dict[str, str] :
+    batch = state['batch_no']
+    sku_code = state['stockist_code']
+    inv_no = state['invoice_no']
+    qty = state['Qty'] 
+    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
+    sku_cd = result.iloc[0] if not result.empty else None
+    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
+    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    claim_date = state["received_date"]
+    inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
+    invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
+    test = check_claim_window(state["analysis"],claim_date,expiry_date,invoice_date)
+    print("====================output========================")
+    print(test)
+    print("==========================output end ===============")
+
+def breakage_in_transit (state:Message)  -> dict[str, str] :
+    batch = state['batch_no']
+    sku_code = state['stockist_code']
+    inv_no = state['invoice_no']
+    qty = state['Qty'] 
+    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
+    sku_cd = result.iloc[0] if not result.empty else None
+    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
+    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    claim_date = state["received_date"]
+    inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
+    invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
+    test = check_claim_window(state["analysis"],claim_date,expiry_date,invoice_date)
+    print("====================output========================")
+    print(test)
+    print("==========================output end ===============")
 
 ###################################################################################################
 def Invalid_node():
     print("Please enter valid batch_no and invoice_no")
 
+def other (state:Message)  -> dict[str, str] :
+    print("inside others")
 
 # def valid_node(state: Message):
 
 
 sample_message: Message = {
     "source": "EML-022",
-    "received_date": "2026-10-01",
+    "received_date": "01-11-2026",
     "from_name": "New Medicos",
     "stockist_code": "STK0043",
-    "subject": " expiry",
+    "subject": "broken iteam",
     "body": (
-        "We are holding 43 boxes (10 strips each) of Aceclo-PCM, batch L2420268, "
+        "We have received broken 43 boxes (10 strips each) of Aceclo-PCM, batch L2420268,instead of 86 boxes "
         "expiring Oct-26.Invoice INV/N02/2505/036911."
     ),
 }
 
 graph = StateGraph(Message)
 graph.add_node("read_review", read_review)
+graph.add_node("near_expiry", near_expiry)
+graph.add_node("expiry", expiry)
+graph.add_node("short_supply", short_supply)
+graph.add_node("breakage_in_transit", breakage_in_transit)
+graph.add_node("other", other)
 graph.add_edge(START, "read_review")
-graph.add_edge("read_review", END)
-# graph.conditional_edges("read_review", triage, ["claims_precheck", "expiry_risk", "scheme_view", "other"])
+#graph.add_edge("read_review", END)
+graph.add_conditional_edges(
+    "read_review",
+    triage,
+    ["near_expiry", "expiry", "short_supply", "breakage_in_transit", "other"],
+)
+graph.add_edge(
+    ["near_expiry", "expiry", "short_supply", "breakage_in_transit", "other"],
+    END,
+)
 app = graph.compile()
 
 
