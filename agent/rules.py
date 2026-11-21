@@ -12,13 +12,14 @@ from state import Message
 def triage(state: Message):
     analysis = str(state["analysis"]).upper()
     print(f"analysis value is {analysis}")
-    if analysis == "NEAR EXPIRY":
+    label = analysis.replace("_", " ").strip()      # model returns NEAR_EXPIRY; older code used NEAR EXPIRY
+    if label == "NEAR EXPIRY":
         return "near_expiry"
-    if analysis in {"EXPIRY", "EXPIRED"}:
+    if label in {"EXPIRY", "EXPIRED"}:
         return "expiry"
-    if analysis == "SHORT_SUPPLY":
+    if label == "SHORT SUPPLY":
         return "short_supply"
-    if analysis == "BREAKAGE_IN_TRANSIT":
+    if label == "BREAKAGE IN TRANSIT":
         return "breakage_in_transit"
     return "other"
 #################################################################################
@@ -43,16 +44,43 @@ CLAIM_WINDOWS = {
 }
 
 
+# Date formats found in the extracts: batch_master and primary_sales mix
+# DD-MM-YYYY, YYYY-MM-DD and DD-Mon-YYYY (e.g. 30-09-2025, 2025-09-30, 01-Apr-2024).
+DATE_FORMATS = ("%d-%m-%Y", "%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y")
+
+
+def to_date(value) -> date | None:
+    """Parse a date in any format used by the extracts; None if missing or unreadable."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "nat", "none"}:
+        return None
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
 def check_claim_window(claim_type: str, claim_date: date, expiry_date: date | None = None, invoice_date: date | None = None) -> dict:
     """Return {'result': 'pass' | 'fail' | 'unknown', 'detail': str} for one claim."""
-    expiry_date = datetime.strptime(expiry_date, '%Y-%m-%d').date()
-    claim_date = datetime.strptime(claim_date, '%d-%m-%Y').date()
-    invoice_date = datetime.strptime(invoice_date, '%d-%m-%Y').date()
+    expiry_date = to_date(expiry_date)
+    claim_date = to_date(claim_date)
+    invoice_date = to_date(invoice_date)
     print(expiry_date,claim_date,invoice_date)
-    rule = CLAIM_WINDOWS.get(claim_type)
+    windows = {k.replace("_", " "): v for k, v in CLAIM_WINDOWS.items()}
+    rule = windows.get(str(claim_type).upper().replace("_", " ").strip())
     print(rule)
     if rule is None:
         return {"result": "unknown", "detail": f"unknown claim type {claim_type!r}"}
+    if claim_date is None:
+        return {"result": "unknown", "detail": "claim (received) date missing or unreadable"}
 
     if rule["anchor"] == "expiry":
         if expiry_date is None:

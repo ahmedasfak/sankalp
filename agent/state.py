@@ -16,6 +16,12 @@ class Message(TypedDict, total=False):
     invoice_no: Optional[str]
     Expiry : Optional[str]
     Qty : Optional[str]
+
+class SchemeState(TypedDict, total=False):
+    request: dict                                   # {"since": "YYYY-MM-DD", "fefo_from": "YYYY-MM-DD"}
+    data_checks: dict
+    sections: Annotated[list, operator.add]         # one dict per analysis node (fan-in)
+    report: str
  
 class MessageLine(TypedDict, total=False):
     sku: Optional[str]

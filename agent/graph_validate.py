@@ -73,6 +73,15 @@ QTY_RE = re.compile(
 )
 
 
+def _expiry_for_batch(batch_no: str | None):
+    if not batch_no:
+        return None
+    matches = batch_df.loc[
+        batch_df["batch_no"] == batch_no.strip().upper(), "expiry_date"
+    ]
+    return matches.iloc[0] if not matches.empty else None
+
+
 def read_review(state: Message) :
     body = state.get("body", "")
     result = reader.invoke(
@@ -108,10 +117,7 @@ def near_expiry (state:Message)  -> dict[str, str] :
     sku_code = state['stockist_code']
     inv_no = state['invoice_no']
     qty = state['Qty'] 
-    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
-    sku_cd = result.iloc[0] if not result.empty else None
-    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
-    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    expiry_date = _expiry_for_batch(batch)
     claim_date = state["received_date"]
     inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
     invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
@@ -125,10 +131,7 @@ def expiry (state:Message)  -> dict[str, str] :
     sku_code = state['stockist_code']
     inv_no = state['invoice_no']
     qty = state['Qty'] 
-    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
-    sku_cd = result.iloc[0] if not result.empty else None
-    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
-    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    expiry_date = _expiry_for_batch(batch)
     claim_date = state["received_date"]
     inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
     invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
@@ -142,10 +145,7 @@ def short_supply (state:Message)  -> dict[str, str] :
     sku_code = state['stockist_code']
     inv_no = state['invoice_no']
     qty = state['Qty'] 
-    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
-    sku_cd = result.iloc[0] if not result.empty else None
-    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
-    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    expiry_date = _expiry_for_batch(batch)
     claim_date = state["received_date"]
     inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
     invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
@@ -159,10 +159,7 @@ def breakage_in_transit (state:Message)  -> dict[str, str] :
     sku_code = state['stockist_code']
     inv_no = state['invoice_no']
     qty = state['Qty'] 
-    result = sales.query("invoice_no == @inv_no and batch_no == @batch ")["sku_code"]
-    sku_cd = result.iloc[0] if not result.empty else None
-    exp_date = batch_df.query("batch_no == @batch and sku_code == @sku_cd ")['expiry_date']
-    expiry_date = exp_date.iloc[0] if not exp_date.empty else None
+    expiry_date = _expiry_for_batch(batch)
     claim_date = state["received_date"]
     inv_dt = sales.query("invoice_no == @inv_no ")["invoice_date"]
     invoice_date = inv_dt.iloc[0] if not inv_dt.empty else None
@@ -212,6 +209,9 @@ graph.add_edge(
     END,
 )
 app = graph.compile()
+png_bytes = app.get_graph().draw_mermaid_png()
+with open("graph.png", "wb") as f:
+    f.write(png_bytes)
 
 
 if __name__ == "__main__":
