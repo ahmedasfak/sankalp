@@ -68,7 +68,8 @@ st["out"] = to_num(st.avg_monthly_outward_packs); st["exp"] = parse_dates(st.exp
 st["sku_code"] = st.sku_code.str.upper().str.strip(); st["batch_no"] = st.batch_no.str.upper().str.strip()
 stock = st
 bm["exp"] = parse_dates(bm.expiry_date); bm["mfg"] = parse_dates(bm.mfg_date)
-bm["batch_no"] = bm.batch_no.str.upper().str.strip(); bm["sku_code"] = bm.sku_code.str.upper().str.strip()
+bm["batch_no"] = bm.batch_no.str.upper().str.strip(); 
+bm["sku_code"] = bm.sku_code.str.upper().str.strip()
 batch_df = bm
 sm["stockist_code"] = sm.stockist_code.str.upper().str.strip()
 stockist_df = sm

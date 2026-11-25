@@ -20,6 +20,8 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 streamlit run app.py
+
+live url : https://sankalp-scam6huxyvh55hacfqfz8c.streamlit.app/
 ```
 
 Only **1. Claim check** calls a model. It needs an OpenRouter key in `.env` at the repo root:
